@@ -22,7 +22,8 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.config = config
         input_size = config.d_proj if config.projection else config.d_embed
-        dropout = 0 if config.n_layers == 1 else config.dp_ratio
+        # dropout = 0 if config.n_layers == 1 else config.dp_ratio
+        dropout = config.dp_ratio
         self.rnn = nn.LSTM(input_size=input_size, hidden_size=config.d_hidden,
                         num_layers=config.n_layers, dropout=dropout,
                         bidirectional=config.birnn)
@@ -44,21 +45,27 @@ class SNLIClassifier(nn.Module):
         self.projection = Linear(config.d_embed, config.d_proj)
         self.encoder = Encoder(config)
         self.dropout = nn.Dropout(p=config.dp_ratio)
-        self.relu = nn.ReLU()
+        # self.relu = nn.ReLU()
+        self.relu = nn.PReLU()
         seq_in_size = 2*config.d_hidden
         if self.config.birnn:
             seq_in_size *= 2
         lin_config = [seq_in_size]*2
+        self.bn = nn.BatchNorm1d(seq_in_size)
         self.out = nn.Sequential(
+            self.bn,
             Linear(*lin_config),
             self.relu,
             self.dropout,
+            self.bn,
             Linear(*lin_config),
             self.relu,
             self.dropout,
+            self.bn,
             Linear(*lin_config),
             self.relu,
             self.dropout,
+            self.bn,
             Linear(seq_in_size, config.d_out))
 
     def forward(self, batch):

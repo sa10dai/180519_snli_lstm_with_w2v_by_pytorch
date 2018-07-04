@@ -2,4 +2,4 @@
 *.pyc
 .vector_cache
 __pycache__
-results
+results*/
