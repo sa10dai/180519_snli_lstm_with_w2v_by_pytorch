@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import glob
 
@@ -6,29 +7,37 @@ import torch
 import torch.optim as O
 import torch.nn as nn
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "pytorch", "text"))
+
 from torchtext import data
 from torchtext import datasets
 
 from model import SNLIClassifier
 from util import get_args, makedirs
 
+dir_base = os.path.dirname(__file__)
 
 args = get_args()
+args.gpu = -1
+args.vector_cache = '../input/vector_cache'
 torch.cuda.set_device(args.gpu)
 
 inputs = data.Field(lower=args.lower)
-answers = data.Field(sequential=False)
+answers = data.Field(sequential=False, unk_token=None)
 
 train, dev, test = datasets.SNLI.splits(inputs, answers, root="../input")
 
 inputs.build_vocab(train, dev, test)
-if args.word_vectors:
-    if os.path.isfile(args.vector_cache):
-        inputs.vocab.vectors = torch.load(args.vector_cache)
-    else:
-        inputs.vocab.load_vectors(args.word_vectors)
-        makedirs(os.path.dirname(args.vector_cache))
-        torch.save(inputs.vocab.vectors, args.vector_cache)
+
+inputs.vocab.load_vectors(args.word_vectors, cache=args.vector_cache)
+# if args.word_vectors:
+#     if os.path.isfile(args.vector_cache):
+#         inputs.vocab.vectors = torch.load(args.vector_cache)
+#     else:
+#         inputs.vocab.load_vectors(args.word_vectors)
+#         makedirs(os.path.dirname(args.vector_cache))
+#         torch.save(inputs.vocab.vectors, args.vector_cache)
+
 answers.build_vocab(train)
 
 train_iter, dev_iter, test_iter = data.BucketIterator.splits(
